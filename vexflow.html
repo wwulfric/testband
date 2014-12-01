@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>vexflow</title>
+    <script src="http://libs.useso.com/js/jquery/2.1.1/jquery.min.js"></script>
+    <script src="http://cdn.rawgit.com/meenie/band.js/1.1.2/dist/band.min.js"></script>
+    <script src="vexflow-min.js"></script>
+    <!--<script src="vexflowapp.js"></script>-->
+    <script src="app.js"></script>
+</head>
+<body>
+    <canvas width=3000 height=3000></canvas>
+    <script>
+        function get_pitches(pitch){
+          res = [];
+          l = pitch.length;
+          for(var i = 0; i < l; i++)
+          {
+            res.push(pitch[i].toLowerCase().replace(/\s/g, "").replace(/(\d)/g, "/\$1"));
+          }
+          return res;
+        };
+        function stopchar(duration){
+          chars = {
+
+          };
+          return 'b/4';
+        }
+        function getout(notes){
+          result = [];
+          sum = 0;
+          ele = [];
+          for(var i=0; i < notes.length; i++)
+          {
+              note = notes[i];
+              rhythm = note.rhythm;
+              pitch = note.pitch;
+              sum += exports[rhythm];
+              keys = get_pitches(pitch);
+              duration = durations[rhythm];
+              if(keys.length == 0)
+              {
+                keys = [stopchar(duration)];
+                duration = duration + 'r';
+              }
+              // console.log(keys);
+              ele.push(new Vex.Flow.StaveNote({keys: keys, duration: duration}));
+              if (Math.abs(sum-1) < 0.001)
+              {
+                  result.push(ele);
+                  sum = 0;
+                  ele = [];
+              }
+          }
+          return result;
+        }
+        exports = {
+            whole: 1,
+            dottedHalf: 0.75,
+            half: 0.5,
+            dottedQuarter: 0.375,
+            tripletHalf: 0.33333334,
+            quarter: 0.25,
+            dottedEighth: 0.1875,
+            tripletQuarter: 0.166666667,
+            eighth: 0.125,
+            dottedSixteenth: 0.09375,
+            tripletEighth: 0.083333333,
+            sixteenth: 0.0625,
+            tripletSixteenth: 0.041666667,
+            thirtySecond: 0.03125
+        };
+        durations = {
+            whole: 'w',
+            dottedHalf: 'hd',
+            half: 'h',
+            dottedQuarter: 'qd',
+            quarter: 'q',
+            dottedEighth: '8d',
+            eighth: '8',
+            dottedSixteenth: '16d',
+            sixteenth: '16',
+        };
+        rnotes = rightHand.notes;
+        lnotes = leftHand.notes;
+        // result = [];
+        // sum = 0;
+        // ele = [];
+        // for(var i=0; i < rnotes.length; i++)
+        // {
+        //     note = rnotes[i];
+        //     rhythm = note.rhythm;
+        //     pitch = note.pitch;
+        //     sum += exports[rhythm];
+        //     ele.push({keys: get_pitches(pitch), duration: durations[rhythm]});
+        //     if (Math.abs(sum-1) < 0.001)
+        //     {
+        //         result.push(ele);
+        //         sum = 0;
+        //         ele = [];
+        //     }
+        // }
+        rres = getout(rnotes);
+        lres = getout(lnotes);
+        len = rres.length;
+        var canvas = $("body canvas")[0];
+        var renderer = new Vex.Flow.Renderer(canvas, Vex.Flow.Renderer.Backends.CANVAS);
+        var ctx = renderer.getContext();
+        j = 0; k = 0;
+        for(var i = 0; i < len; i++){
+          if (j == 4)
+          {
+            j = 0;
+            k += 1;
+          }
+          var topStaff = new Vex.Flow.Stave(20+300*j, 300+300*(k-1), 300);
+          var bottomStaff = new Vex.Flow.Stave(20+300*j, 450+300*(k-1), 300);
+          if (j == 0){
+            topStaff.addClef('treble');
+            topStaff.addTimeSignature("4/4");
+            bottomStaff.addClef('treble');
+            bottomStaff.addTimeSignature("4/4");
+            var brace = new Vex.Flow.StaveConnector(topStaff, bottomStaff).setType(3);
+            var lineLeft = new Vex.Flow.StaveConnector(topStaff, bottomStaff).setType(1);
+            brace.setContext(ctx).draw();
+            lineLeft.setContext(ctx).draw();
+          }
+          topStaff.setContext(ctx).draw();
+          bottomStaff.setContext(ctx).draw();
+          var lineRight = new Vex.Flow.StaveConnector(topStaff, bottomStaff).setType(0);
+          lineRight.setContext(ctx).draw();
+          rn = rres[i];
+          var voice = new Vex.Flow.Voice({num_beats: 4, beat_value: 4});
+          voice.addTickables(rn);
+          var formatter = new Vex.Flow.Formatter();
+          formatter.joinVoices([voice]).formatToStave([voice], topStaff);
+          voice.draw(ctx, bottomStaff);
+          ln = lres[i];
+          var voice = new Vex.Flow.Voice({num_beats: 4, beat_value: 4});
+          voice.addTickables(ln);
+          var formatter = new Vex.Flow.Formatter();
+          formatter.joinVoices([voice]).formatToStave([voice], bottomStaff);
+          voice.draw(ctx, topStaff);
+          j++;
+        }
+    </script>
+</body>
+</html>
